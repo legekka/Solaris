@@ -5,6 +5,6 @@ mss
 pandas
 wandb
 keyboard
-transfomrmers
+transformers
 opencv-python
 vgamepad
