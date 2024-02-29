@@ -1,0 +1,10 @@
+pygame
+tqdm
+pywin32
+mss
+pandas
+wandb
+keyboard
+transfomrmers
+opencv-python
+vgamepad
