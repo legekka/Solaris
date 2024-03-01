@@ -11,8 +11,8 @@ from modules.timesformer import TimeSFormerClassifierHR, TimeSFormerClassifierT2
 np.random.seed(0)
 
 config = {
-    "image_size": 448,
-    "patch_size": 32,
+    "image_size": 224,
+    "patch_size": 16,
     "num_channels": 3,
     "num_frames": 16,
     "hidden_size": 768,
@@ -64,7 +64,7 @@ def sample_frame_indices(clip_len, total_frames):
 
 
 # Assuming you have a folder 'image_sequence/' with your frames named sequentially (e.g., frame_001.jpg, frame_002.jpg, ...)
-image_folder = 'dataset_1/NavigateGeneral_1/images/'
+image_folder = 'datasets/navigation_1/NavigateGeneral_1/images/'
 image_paths = sorted(glob.glob(f'{image_folder}*.jpg'))  # Make sure this matches your file naming pattern
 
 total_frames = len(image_paths)  # Total number of frames available
@@ -90,23 +90,23 @@ model.to("cuda")
 inputs = frames.to("cuda")
 inputs = inputs.unsqueeze(0)
 print(inputs.shape)
-model.train()
+model.eval()
 # # forward pass
 
 import tqdm
 loop = tqdm.tqdm(range(100))
 
 
-for i in loop:
-    print("a")
-    outputs = model(inputs)
-    loop.refresh()
+# for i in loop:
+#     print("a")
+#     outputs = model(inputs)
+#     loop.refresh()
 
 
-# with torch.no_grad():
-#     for i in loop:
-#         outputs = model(inputs)
-#         loop.refresh()
+with torch.no_grad():
+    for i in loop:
+        outputs = model(inputs)
+        loop.refresh()
 
 
 # outputs = model(inputs)

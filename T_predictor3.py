@@ -7,7 +7,7 @@ import tqdm
 from torchvision import transforms
 
 import wandb
-use_wandb = True
+use_wandb = False
 
 
 import json
@@ -21,9 +21,7 @@ class Trainer:
         self.device = device
         
 
-    def train(self, train_loader, val_loader, learning_rate, num_epochs):
-        self.learning_rate = learning_rate
-        step = 0
+    def train(self, train_loader, val_loader, num_epochs):
         # train the model using tqdm
         for epoch in range(num_epochs):
             self.model.train()
@@ -186,14 +184,14 @@ def main():
     
     # Finetuning for predicting values
 
-    checkpoint_path = "models/TimeSFormer/PredictorC-Exp-2/14.pth"
-    dataset_folder = "dataset_2"
-    dataset_json = "dataset.json"
+    checkpoint_path = "models/TimeSFormer/Small/Final/19.pth"
+    dataset_folder = "datasets/navigation_2"
+    dataset_json = "full.json"
 
-    wdb_name = "Small-Final-1"
-    wdb_notes = "Fully unfreezed, slow warmup."
+    wdb_name = "Small-Final-2"
+    wdb_notes = "Learning rate eta_min set to 5e-5."
 
-    batch_size = 8
+    batch_size = 12
     learning_rate = 1e-4
 
     sequence_length = 8
@@ -239,7 +237,7 @@ def main():
     warmup_steps = 500
 
     # Initialize the CosineAnnealing scheduler
-    cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_steps - warmup_steps, eta_min=5e-6)
+    cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_steps - warmup_steps, eta_min=5e-5)
 
     # Initialize the composite scheduler with warmup
     scheduler = WarmupThenCosineAnnealingLR(optimizer, warmup_steps, cosine_scheduler)
@@ -261,7 +259,7 @@ def main():
     trainer = Trainer(model, criterion, optimizer, scheduler, device)
 
     # train the model
-    trainer.train(train_loader, val_loader, learning_rate, num_epochs)
+    trainer.train(train_loader, val_loader, num_epochs)
 
 if __name__ == "__main__":
     main()
