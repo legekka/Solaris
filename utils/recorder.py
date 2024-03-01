@@ -33,12 +33,8 @@ def checkForKeypress():
         return True
 
 def main():
-    dataset_folder = "dataset_2"
-    #name = "TargetPracticeDot"
-    name = "TargetPracticeCursor"
-    #name = "NavigateIdeal"
-    #name = "AlignWithNeutronStarCone"
-    #name = "TurnAwayFromSun"
+    dataset_folder = "datasets/fss_1"
+    name = "FSSGeneral"
     fps = 1/10
     
     # for convention we are using name_number as folder name
@@ -82,6 +78,8 @@ def main():
     print("Saved " + str(len(images)) + " images .")
 
 if __name__ == "__main__":
-    print("Starting...")
+    print("Starting in 2...")
+    time.sleep(1)
+    print("Starting in 1...")
     time.sleep(1)
     main()

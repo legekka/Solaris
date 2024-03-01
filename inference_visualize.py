@@ -108,10 +108,10 @@ def main():
     gui = None
     #gui = GUI()
 
-    model_folder = "models/TimeSFormer/PredictorB-Exp-1"
-    checkpoint = "B_12.pth"
+    model_folder = "models/TimeSFormer/Small/Final"
+    checkpoint = "19.pth"
 
-    from modules.timesformer import TimeSFormerClassifierT1
+    from modules.timesformer import TimeSFormerClassifierU
 
     height, width = 224, 224  # input image size
 
@@ -122,7 +122,7 @@ def main():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
-    model = TimeSFormerClassifierT1("facebook/timesformer-base-finetuned-k400", num_classes=13)
+    model = TimeSFormerClassifierU("facebook/timesformer-base-finetuned-k400", num_classes=13)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)

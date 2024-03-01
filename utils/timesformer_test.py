@@ -14,7 +14,7 @@ config = {
     "image_size": 224,
     "patch_size": 16,
     "num_channels": 3,
-    "num_frames": 16,
+    "num_frames": 32,
     "hidden_size": 768,
     "num_hidden_layers": 12,
     "num_attention_heads": 12,

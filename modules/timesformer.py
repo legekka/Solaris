@@ -1,9 +1,10 @@
+import torch
 import torch.nn as nn
 from transformers import TimesformerModel, TimesformerConfig
 
-class TimeSFormerClassifier(nn.Module):
+class EDEN(nn.Module):
     def __init__(self, pretrained_model_name, num_classes):
-        super(TimeSFormerClassifier, self).__init__()
+        super(EDEN, self).__init__()
         # Load the pretrained TimeSFormer model
         self.timesformer = TimesformerModel.from_pretrained(pretrained_model_name)
         # freeze the parameters
@@ -222,4 +223,58 @@ class TimeSFormerClassifierHR(nn.Module):
         pooled_output = outputs.last_hidden_state[:, 0]
         logits = self.fc(pooled_output)
         return logits
-    
+
+class EDEN(nn.Module):
+    def __init__(self, config, from_pretrained=False, pretrained_model_name=None, freeze_mode="unfreezed", num_classes=13):
+        super(EDEN, self).__init__()
+        # Load the pretrained TimeSFormer model
+        config = TimesformerConfig(**config)
+        if from_pretrained:
+            self.timesformer = TimesformerModel.from_pretrained(pretrained_model_name)
+        else:
+            self.timesformer = TimesformerModel(config=config)
+        
+        
+
+        hidden_size = self.timesformer.config.hidden_size
+        self.fc = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size//2),
+            nn.BatchNorm1d(hidden_size//2),
+            nn.ReLU(),
+            nn.Linear(hidden_size//2, hidden_size//4),
+            nn.BatchNorm1d(hidden_size//4),
+            nn.ReLU(),
+            nn.Linear(hidden_size//4, hidden_size//8),
+            nn.BatchNorm1d(hidden_size//8),
+            nn.ReLU(),
+            nn.Linear(hidden_size//8, hidden_size//16),
+            nn.BatchNorm1d(hidden_size//16),
+            nn.ReLU(),
+            nn.Linear(hidden_size//16, num_classes),
+        )
+
+
+        if freeze_mode == "unfreezed":
+            for param in self.timesformer.parameters():
+                param.requires_grad = True
+        elif freeze_mode == "FC_only":
+            for param in self.timesformer.parameters():
+                param.requires_grad = False
+        elif freeze_mode == "T1_unfreezed":
+            for param in self.timesformer.parameters():
+                param.requires_grad = False
+            for param in self.timesformer.encoder.layer[-1].parameters():
+                param.requires_grad = True
+        elif freeze_mode == "T2_unfreezed":
+            for param in self.timesformer.parameters():
+                param.requires_grad = False
+            for param in self.timesformer.encoder.layer[-1].parameters():
+                param.requires_grad = True
+            for param in self.timesformer.encoder.layer[-2].parameters():
+                param.requires_grad = True
+
+    def forward(self, pixel_values):
+        outputs = self.timesformer(pixel_values=pixel_values)
+        pooled_output = outputs.last_hidden_state[:, 0]
+        logits = self.fc(pooled_output)
+        return logits

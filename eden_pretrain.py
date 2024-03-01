@@ -1,4 +1,4 @@
-from modules.timesformer import TimeSFormerClassifierHR
+from modules.timesformer import EDEN
 import torch
 import os 
 import pandas as pd
@@ -8,7 +8,7 @@ from torchvision import transforms
 import json
 
 import wandb
-use_wandb = False
+use_wandb = True
 
 
 class Trainer:
@@ -173,7 +173,8 @@ def save_checkpoint(model, optimizer, filename="checkpoint.pth"):
 def load_checkpoint(model, optimizer, filename="checkpoint.pth"):
     checkpoint = torch.load(filename)
     model.load_state_dict(checkpoint["state_dict"])
-    optimizer.load_state_dict(checkpoint["optimizer"])
+    if checkpoint.get("optimizer"):
+        optimizer.load_state_dict(checkpoint["optimizer"])
     del checkpoint
     return model, optimizer
 
@@ -182,22 +183,28 @@ def load_config(filename):
         config = json.load(f)
     return config
 
+def save_config(config, filename):
+    with open(filename, "w") as f:
+        json.dump(config, f, indent=4)
+
 def main():
-    config_path = "models/TimeSFormer/Medium/model_config.json"
+    config_path = "models/TimeSFormer/EDENFSS/model_config.json"
     config = load_config(config_path)
 
-    checkpoint_path = "-"
-    dataset_folder = "datasets/navigation_pretraining"
+    checkpoint_path = "models/EDEN_base.pth"
+    dataset_folder = "datasets/fss_1"
     dataset_json = "full.json"
 
-    wdb_name = "HR-Pretrain-1"
-    wdb_notes = "Default configuration."
+    wdb_name = "EDENFSS-Pretraining-1"
+    wdb_notes = "Pretraining EDEN on FSS dataset only."
 
-    config["num_epochs"] = 10
-    config["batch_size"] = 4
+    config["num_epochs"] = 20
+    config["batch_size"] = 8
     config["learning_rate"] = 1e-4
+    config["eta_min"] = 5e-6
+    config["warmup_steps"] = 50
 
-    model = TimeSFormerClassifierHR(config, num_classes=13)
+    model = EDEN(config, freeze_mode="FC_only", num_classes=13)
 
     # count the trainable parameters
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -237,10 +244,10 @@ def main():
 
     # calculating max steps based on the length of the train_loader
     max_steps = len(train_loader) * config["num_epochs"] 
-    config["warmup_steps"] = 200
+    
     
     # Initialize the CosineAnnealing scheduler
-    cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_steps - config["warmup_steps"], eta_min=5e-6)
+    cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_steps - config["warmup_steps"], eta_min=config["eta_min"])
 
     # Initialize the composite scheduler with warmup
     scheduler = WarmupThenCosineAnnealingLR(optimizer, config["warmup_steps"], cosine_scheduler)
@@ -260,6 +267,8 @@ def main():
     # init wandb
     if use_wandb:
         wandb.init(project="Solaris", name=wdb_name, notes=wdb_notes, config=config)
+
+    save_config(config, "checkpoints/training_config.json")
 
     trainer = Trainer(model, criterion, optimizer, scheduler, device)
 
