@@ -59,9 +59,9 @@ class Trainer:
 
 
             train_loss /= len(train_loader)
-            print("Epoch", epoch, "train_loss", train_loss)
+            print("Epoch", epoch + 1, "train_loss", train_loss)
             val_loss = self.evaluate(val_loader)
-            print("Epoch", epoch, "val_loss", val_loss)
+            print("Epoch", epoch + 1, "val_loss", val_loss)
 
             # save the model
             save_checkpoint(self.model, self.optimizer, filename=f"checkpoints/{epoch+1}.pth")
@@ -201,7 +201,7 @@ def main():
     config["num_epochs"] = 20
     config["batch_size"] = 8
     config["learning_rate"] = 1e-4
-    config["eta_min"] = 5e-6
+    config["eta_min"] = 2e-5
     config["warmup_steps"] = 50
 
     model = EDEN(config, freeze_mode="FC_only", num_classes=13)
