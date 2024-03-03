@@ -103,72 +103,26 @@ def checkForKeypress():
         print("Ctrl+* pressed...")
         return True
     
-
-# this is a class running on a separate thread that collects screenshots with a given frequency
-class ScreenshotCollector:
-    def __init__(self, sampling_rate, seq_len):
-        self.sampling_rate = sampling_rate
-        self.seq_len = seq_len
-        self.screenshots = []
-        self.running = False
-        self.stack = None
-
-    def start(self):
-        global image_transforms
-        self.running = True
-        while self.running:
-            start = time.time()
-            screenshot = get_elite_screenshot()
-            self.screenshots.append(image_transforms(screenshot))
-            if len(self.screenshots) > self.seq_len:
-                self.screenshots.pop(0)
-            if keyboard.is_pressed("ctrl+*"):
-                print("Stopping the screenshot collector...")
-                self.running = False
-            # stack
-            self.stack = torch.stack(self.screenshots)
-            # wait until the next screenshot
-            while time.time() - start < self.sampling_rate:
-                time.sleep(0.001)
-
-    def stop(self):
-        self.running = False
-
-    def get_screenshots(self):
-        return self.screenshots
-    
-    def get_stack(self):
-        return self.stack
-    
-    def clear(self):
-        self.screenshots = []
-
-def load_config(filename):
-    with open(filename, "r") as f:
-        config = json.load(f)
-    return config
-
 def main():
 
     gui = None
     #gui = GUI()
-    config_file = "models/TimeSFormer/EDENFSS/Pretrain-2/training_config.json"
-    model_folder = "models/TimeSFormer/EDENFSS/Pretrain-2"
-    checkpoint = "10.pth"
 
-    config = load_config(config_file)
+    model_folder = "models/TimeSFormer/Small/Final"
+    checkpoint = "19.pth"
 
-    from modules.timesformer import EDEN
+    from modules.timesformer import TimeSFormerClassifierU
 
-    global image_transforms
+    height, width = 224, 224  # input image size
+
     image_transforms = transforms.Compose([
-        transforms.Resize((config["image_size"], config["image_size"])),
-        transforms.CenterCrop(config["image_size"]),
+        transforms.Resize((height, width)),
+        transforms.CenterCrop((height, width)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
-    model = EDEN(config, num_classes=config["num_classes"])
+    model = TimeSFormerClassifierU("facebook/timesformer-base-finetuned-k400", num_classes=13)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -177,21 +131,10 @@ def main():
 
     print(model)
 
-    screenshot_fps = 1/10
+    fps = 1/10
 
-    # start the screenshot collector on a separate thread
-    import threading
-    collector = ScreenshotCollector(screenshot_fps, config["num_frames"])
-    collector_thread = threading.Thread(target=collector.start)
-    collector_thread.start()
-
-    print("Screenshot collector started, waiting for screenshots...")
-    # wait until num_frames are collected
-    while len(collector.get_screenshots()) < config["num_frames"]:
-        time.sleep(0.1)
-    print("Done, starting the inference...")
-    
-    model_fps = 1/10
+    sequence_length = 8
+    image_sequence = []
 
     model.eval()
     with torch.no_grad():
@@ -199,9 +142,18 @@ def main():
             if checkForKeypress():
                 break
             start = time.time()
+            # get the latest screenshot
+            screenshot = get_elite_screenshot()
 
-            # get the latest screenshots
-            images = collector.get_stack()
+            image_sequence.append(image_transforms(screenshot))
+            if len(image_sequence) > sequence_length:
+                image_sequence.pop(0)
+
+            if len(image_sequence) < sequence_length:
+                print("Loading sequence...")
+                continue
+
+            images = torch.stack(image_sequence)    
             
             # adding batch dimension
             screenshot = images.unsqueeze(0).to(device)
@@ -216,18 +168,15 @@ def main():
             if gui is not None:
                 gui.update_and_draw(format_output(output))
 
-            if time.time() - start > model_fps:
+            if time.time() - start > fps:
                 delay = time.time() - start
-                print("Slower than the set FPS! Current FPS: ", round(1/delay, 1))
+                diffence = round(delay - fps, 1)
+                print("Slower than the set FPS! Difference: ", diffence, " ms")
 
             # wait until fps amount of time has passed
-            while time.time() - start < model_fps:
+            while time.time() - start < fps:
                 time.sleep(0.001)
     print("Stopping...")
-    collector.stop()
-    collector_thread.join()
-    if gui is not None:
-        gui.close()
            
 if __name__ == "__main__":
     main()

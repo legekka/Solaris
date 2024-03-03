@@ -65,8 +65,8 @@ def checkForKeypress():
     
 def main():
 
-    model_folder = "checkpoints"
-    checkpoint = "19.pth"
+    model_folder = "models/TimeSFormer/Small/Final-2"
+    checkpoint = "7.pth"
 
 
     height, width = 224, 224  # input image size

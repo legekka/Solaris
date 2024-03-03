@@ -36,7 +36,7 @@ class Gamepad:
         # Based on value is smaller than 0.5, return 0, else return 1
         return 1 if value > 0.5 else 0
     
-    def _custom_sigmoid(self, x, steepness=3.5, x_mid=0):
+    def _custom_sigmoid(self, x, steepness=3, x_mid=0):
         return 2 * (1 / (1 + np.exp(-steepness * (x - x_mid)))) - 1
 
     def update(self, input_dict):

@@ -253,24 +253,26 @@ class EDEN(nn.Module):
             nn.Linear(hidden_size//16, num_classes),
         )
 
-
+        for param in self.timesformer.parameters():
+            param.requires_grad = False
+        
         if freeze_mode == "unfreezed":
             for param in self.timesformer.parameters():
                 param.requires_grad = True
-        elif freeze_mode == "FC_only":
-            for param in self.timesformer.parameters():
-                param.requires_grad = False
         elif freeze_mode == "T1_unfreezed":
-            for param in self.timesformer.parameters():
-                param.requires_grad = False
             for param in self.timesformer.encoder.layer[-1].parameters():
                 param.requires_grad = True
         elif freeze_mode == "T2_unfreezed":
-            for param in self.timesformer.parameters():
-                param.requires_grad = False
-            for param in self.timesformer.encoder.layer[-1].parameters():
-                param.requires_grad = True
-            for param in self.timesformer.encoder.layer[-2].parameters():
+            for j in range(2):
+                for param in self.timesformer.encoder.layer[-j].parameters():
+                    param.requires_grad = True
+        elif freeze_mode == "T6_unfreezed":
+            for j in range(6):
+                for param in self.timesformer.encoder.layer[-j].parameters():
+                    param.requires_grad = True
+        elif freeze_mode == "EN_unfreezed":
+            # unfreeze the encoder layers
+            for param in self.timesformer.encoder.parameters():
                 param.requires_grad = True
 
     def forward(self, pixel_values):
