@@ -8,7 +8,7 @@ from torchvision import transforms
 import json
 
 import wandb
-use_wandb = True
+use_wandb = False
 
 
 class Trainer:
@@ -90,12 +90,12 @@ class Trainer:
         return val_loss
 
 class TDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_folder, data_folders, transforms=None, sequence_length=10):
+    def __init__(self, dataset_folder, data_folders, transforms=None, sequence_length=10, shift=10):
         self.dataset_folder = dataset_folder
         self.data_folders = data_folders
         self.sequence_length = sequence_length
         self.transforms = transforms
-
+        self.shift_frames = shift
         
         # Data folders are a list of folders, each folder contains images and a data.csv file for a given sequence
         # For easy handling, we will concatenate all the data.csv files into a single dataframe, and store the starting indexes of each folder
@@ -103,13 +103,15 @@ class TDataset(torch.utils.data.Dataset):
         for folder in data_folders:
             data_file = os.path.join(self.dataset_folder, folder, "data.csv")
             data = pd.read_csv(data_file)
+            # shift the data by removing the first shift_frames rows
+            data = data.iloc[self.shift_frames:] # this is for future prediction
             self.labels = pd.concat([self.labels, data])
         
         self.image_folders = [os.path.join(self.dataset_folder, folder, "images") for folder in data_folders]
         self.images = []
         for folder in self.image_folders:
             images = os.listdir(folder)
-            for i in range(len(images)):
+            for i in range(len(images)-self.shift_frames): # this isn't really necessary, since the __len__ is based on the count of labels, and the labels are shifted. So we just make sure there won't be any unused images
                 self.images.append(os.path.join(folder, f"{i+1}.jpg"))
 
         self.labels_columns = self.labels.columns
@@ -188,12 +190,12 @@ def main():
     config_path = "models/TimeSFormer/EDENFSS/model_config.json"
     config = load_config(config_path)
 
-    checkpoint_path = "models/TimeSFormer/EDENFSS/Pretrain-2/6.pth"
-    dataset_folder = "datasets/fss_1"
+    checkpoint_path = "models/TimeSFormer/Small/Final/19.pth"
+    dataset_folder = "datasets/navigation_2"
     dataset_json = "full.json"
 
-    wdb_name = "EDENFSS-Pretraining-2"
-    wdb_notes = "T1 unfreezed, pretraining."
+    wdb_name = "Small-Final-2"
+    wdb_notes = "Learning rate eta_min set to 5e-5."
 
     config["num_epochs"] = 10
     config["batch_size"] = 8
@@ -202,6 +204,7 @@ def main():
     config["warmup_steps"] = 200
     config["freeze_mode"] = "T1_unfreezed"
     config["num_classes"] = 13
+    config["shift_frames"] = 6
 
     model = EDEN(config, freeze_mode=config["freeze_mode"], num_classes=config["num_classes"])
 
@@ -227,8 +230,8 @@ def main():
     # init the trainset and valset
     train_folders = dataset["train"]
     val_folders = dataset["val"]
-    trainset = TDataset(dataset_folder, train_folders, t_transforms, sequence_length=config["num_frames"])
-    valset = TDataset(dataset_folder, val_folders, t_transforms, sequence_length=config["num_frames"])
+    trainset = TDataset(dataset_folder, train_folders, t_transforms, sequence_length=config["num_frames"], shift=config["shift_frames"])
+    valset = TDataset(dataset_folder, val_folders, t_transforms, sequence_length=config["num_frames"], shift=config["shift_frames"])
 
     # init the dataloaders (these are sequential datasets)
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=config["batch_size"], num_workers=4, drop_last=True, shuffle=True, persistent_workers=True)
